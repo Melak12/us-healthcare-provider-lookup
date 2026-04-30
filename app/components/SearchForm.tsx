@@ -13,7 +13,8 @@ export default function SearchForm() {
   const [npiType, setNpiType] = useState<NpiType>("individual");
   const [npiNumber, setNpiNumber] = useState("");
   const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  // Stores either the individual's last name or the organization's name
+  const [providerName, setProviderName] = useState("");
   const [npiError, setNpiError] = useState("");
 
   function handleNpiNumberChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -36,8 +37,8 @@ export default function SearchForm() {
       return;
     }
 
-    // TODO: call Server Action with { npiType, npiNumber, firstName, lastName }
-    console.log("Search submitted:", { npiType, npiNumber, firstName, lastName });
+    // TODO: call Server Action with { npiType, npiNumber, firstName, providerName }
+    console.log("Search submitted:", { npiType, npiNumber, firstName, providerName });
   }
 
   const isOrganization = npiType === "organization";
@@ -119,17 +120,17 @@ export default function SearchForm() {
         {/* ── Last Name / Organization Name ── */}
         <div className="flex flex-col gap-1">
           <label
-            htmlFor="lastName"
+            htmlFor={isOrganization ? "organizationName" : "lastName"}
             className="text-sm font-medium text-gray-700 dark:text-gray-300"
           >
             {isOrganization ? "Organization Name" : "Provider Last Name"}
           </label>
           <input
-            id="lastName"
+            id={isOrganization ? "organizationName" : "lastName"}
             type="text"
             placeholder={isOrganization ? "e.g. General Hospital" : "e.g. Doe"}
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
+            value={providerName}
+            onChange={(e) => setProviderName(e.target.value)}
             className="rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
           />
         </div>
