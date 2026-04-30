@@ -26,6 +26,17 @@ export interface CreateLookupInput {
 }
 
 /**
+ * Retrieves the most recent Lookup records (up to 100), sorted newest first.
+ * Used to power the history / dashboard page.
+ */
+export async function getAllLookups() {
+  return prisma.lookup.findMany({
+    orderBy: { timestamp: "desc" },
+    take: 100,
+  });
+}
+
+/**
  * Persists a new Lookup record to the database.
  * Returns the created record including the auto-generated id and timestamp.
  */
