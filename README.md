@@ -57,23 +57,20 @@ Open `.env` and set:
 ```env
 # Pooled connection — used by Prisma Client at runtime
 DATABASE_URL="postgresql://USER:PASSWORD@HOST/DBNAME?sslmode=require"
-
-# Direct connection — used by Prisma Migrate (bypasses PgBouncer)
-DIRECT_URL="postgresql://USER:PASSWORD@ep-HOST-DIRECT.region.aws.neon.tech/DBNAME?sslmode=require"
 ```
 
 > **Where to find these strings**: In your Neon dashboard, open your project → **Connection Details**.  
-> Select **Pooled connection** for `DATABASE_URL` and **Direct connection** for `DIRECT_URL`.
+> Select **Pooled connection** for `DATABASE_URL`. Make sure to select Prisma as a framework. 
 
 ### 3. Apply Database Migrations
 
-Run the initial migration to create the `lookups` table. Prisma CLI uses `DIRECT_URL` to connect:
+Run the initial migration to create the `lookups` table.
 
 ```bash
 npx prisma migrate dev --name init
 ```
 
-This creates all tables defined in `prisma/schema.prisma` using the `DIRECT_URL` direct connection (bypassing PgBouncer).
+This creates all tables defined in `prisma/schema.prisma`
 
 ### 4. Generate Prisma Client
 
@@ -95,31 +92,50 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## Environment Variables
 
-| Variable | Required | Description |
-|---|---|---|
-| `DATABASE_URL` | ✅ | Neon **pooled** connection string — used by the `@prisma/adapter-neon` Driver Adapter at runtime |
-| `DIRECT_URL` | ✅ | Neon **direct** (non-pooled) connection string — used by `prisma migrate` / `prisma db push` |
-
----
 
 ## Project Structure
 
 ```
 ├── app/
-│   ├── generated/prisma/   # Auto-generated Prisma Client (do not edit)
-│   ├── components/         # Shared React components
-│   ├── data/               # Static / mock data
-│   └── types/              # Shared TypeScript types
+│   ├── actions/                # Server Actions (API calls, DB logic)
+│   │   └── searchProviders.ts
+│   ├── components/             # Shared React components
+│   ├── data/                   # Static / mock data
+│   │   └── searchResultDummy.ts
+│   ├── generated/
+│   │   └── prisma/             # Auto-generated Prisma Client (do not edit)
+│   ├── globals.css             # Tailwind global styles
+│   ├── history/                # History dashboard pages
+│   │   ├── loading.tsx
+│   │   └── page.tsx
+│   ├── layout.tsx              # Root layout
+│   ├── page.tsx                # Home page
+│   ├── search-result/          # Search result pages
+│   │   ├── loading.tsx
+│   │   └── page.tsx
+│   └── types/                  # Shared TypeScript types
+│       └── nppes.ts
 ├── lib/
-│   └── prisma.ts           # Prisma Client singleton (prevents connection leaks in dev)
+│   ├── lookupService.ts        # NPPES API integration logic
+│   └── prisma.ts               # Prisma Client singleton
 ├── prisma/
-│   ├── schema.prisma       # Database schema
-│   ├── migrations/         # SQL migration history
-│   └── prisma.config.ts    # Prisma 7 configuration (datasource URLs)
-├── .env.example            # Environment variable template
-└── README.md
+│   ├── migrations/             # SQL migration history
+│   │   └── 20260430000000_init/
+│   │       └── migration.sql
+│   ├── schema.prisma           # Database schema
+│   └── prisma.config.ts        # Prisma 7 configuration (datasource URLs)
+├── .env.example                # Environment variable template
+├── eslint.config.mjs           # ESLint config
+├── next-env.d.ts               # Next.js type declarations
+├── next.config.ts              # Next.js config
+├── package.json                # Project manifest
+├── pnpm-lock.yaml              # pnpm lockfile
+├── pnpm-workspace.yaml         # pnpm workspace config
+├── postcss.config.mjs          # PostCSS config
+├── README.md                   # Project documentation
+├── tsconfig.json               # TypeScript config
+└── public/                     # Static assets (if any)
 ```
 
 ---
