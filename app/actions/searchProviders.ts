@@ -83,6 +83,9 @@ export async function searchProviders(
     queryType = "name";
   }
 
+  // Default Query Parameters
+  query.set("limit", "200");
+
   // ── Fetch from NPPES API ───────────────────────────────────────────────────
   const url = `${baseUrl}?${query.toString()}`;
   let apiResponse: NppesSearchResponse;
