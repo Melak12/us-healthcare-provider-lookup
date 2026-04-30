@@ -65,10 +65,17 @@ export default function SearchForm() {
     // Build search-result URL with query params so the server component can
     // perform the actual NPPES API call and return real results.
     const params = new URLSearchParams();
-    params.set("type", npiType);
+    // Map provider type to NPPES enumeration_type values: NPI-1 = individual, NPI-2 = organization
+    params.set("enumeration_type", npiType === "individual" ? "NPI-1" : "NPI-2");
     if (npiNumber) params.set("npi", npiNumber);
     if (firstName.trim()) params.set("first", firstName.trim());
-    if (providerName.trim()) params.set("last", providerName.trim());
+    // Use "organization_name" key for org searches so the param name is self-descriptive
+    if (providerName.trim()) {
+      params.set(
+        isOrganization ? "organization_name" : "last",
+        providerName.trim()
+      );
+    }
 
     router.push(`/search-result?${params.toString()}`);
     // isSearching stays true while Next.js loads the results page;

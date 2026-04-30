@@ -62,6 +62,7 @@ export async function searchProviders(
         error: "Please provide an organization name to search.",
       };
     }
+    query.set("enumeration_type", "NPI-2");
     query.set("organization_name", providerName.trim());
     queryDescription = providerName.trim();
     queryType = "name";
@@ -75,6 +76,7 @@ export async function searchProviders(
         error: "Please provide at least a first name or last name to search.",
       };
     }
+    query.set("enumeration_type", "NPI-1");
     if (trimFirst) query.set("first_name", trimFirst);
     if (trimLast) query.set("last_name", trimLast);
     queryDescription = [trimFirst, trimLast].filter(Boolean).join(" ");

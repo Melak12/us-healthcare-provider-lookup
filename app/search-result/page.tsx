@@ -22,14 +22,23 @@ export default async function SearchResultPage({
   searchParams,
 }: SearchResultPageProps) {
   const params = await searchParams;
-  const type = typeof params.type === "string" ? params.type : "individual";
+  // enumeration_type=NPI-1 → individual, NPI-2 → organization
+  const enumerationType =
+    typeof params.enumeration_type === "string" ? params.enumeration_type : "NPI-1";
+  const npiType = enumerationType === "NPI-2" ? "organization" : "individual";
   const npi = typeof params.npi === "string" ? params.npi : undefined;
   const first = typeof params.first === "string" ? params.first : undefined;
+  // Individual last name travels as "last"; org name travels as "organization_name"
   const last = typeof params.last === "string" ? params.last : undefined;
+  const orgName =
+    typeof params.organization_name === "string"
+      ? params.organization_name
+      : undefined;
+  const providerName = npiType === "organization" ? orgName : last;
 
   // If the page is opened without any search parameters, prompt the user
   // to go back and perform a search.
-  if (!npi && !first && !last) {
+  if (!npi && !first && !last && !orgName) {
     return (
       <div className="flex flex-col flex-1 bg-gray-50 dark:bg-gray-950">
         <main className="flex flex-1 flex-col px-4 py-10 sm:px-8">
@@ -42,10 +51,10 @@ export default async function SearchResultPage({
   }
 
   const result = await searchProviders({
-    npiType: type === "organization" ? "organization" : "individual",
+    npiType,
     npiNumber: npi,
     firstName: first,
-    providerName: last,
+    providerName,
   });
 
   const { results, result_count } = result.success
