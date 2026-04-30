@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type NpiType = "individual" | "organization";
@@ -16,6 +16,7 @@ const MOCK_SEARCH_DELAY_MS = 1500;
  */
 export default function SearchForm() {
   const router = useRouter();
+  const mountedRef = useRef(true);
   const [npiType, setNpiType] = useState<NpiType>("individual");
   const [npiNumber, setNpiNumber] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -23,6 +24,15 @@ export default function SearchForm() {
   const [providerName, setProviderName] = useState("");
   const [npiError, setNpiError] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+
+  // Track whether the component is still mounted so we don't update state
+  // or navigate after an unmount during the async delay.
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   function handleNpiNumberChange(e: React.ChangeEvent<HTMLInputElement>) {
     // Allow only digits and cap at 10 characters
@@ -46,11 +56,19 @@ export default function SearchForm() {
 
     setIsSearching(true);
 
-    // TODO: replace this delay with a real Server Action call
-    //       e.g. await searchProviders({ npiType, npiNumber, firstName, providerName })
-    await new Promise((resolve) => setTimeout(resolve, MOCK_SEARCH_DELAY_MS));
+    try {
+      // TODO: replace this delay with a real Server Action call
+      //       e.g. await searchProviders({ npiType, npiNumber, firstName, providerName })
+      await new Promise((resolve) => setTimeout(resolve, MOCK_SEARCH_DELAY_MS));
 
-    router.push("/search-result");
+      if (mountedRef.current) {
+        router.push("/search-result");
+      }
+    } finally {
+      if (mountedRef.current) {
+        setIsSearching(false);
+      }
+    }
   }
 
   const isOrganization = npiType === "organization";
@@ -64,7 +82,7 @@ export default function SearchForm() {
       className="w-full rounded-2xl border border-gray-200 bg-white p-8 shadow-sm dark:border-gray-700 dark:bg-gray-900"
     >
       {/* ── NPI Type selector ── */}
-      <fieldset className="mb-6" disabled={isSearching}>
+      <fieldset className="mb-6">
         <legend className="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
           Provider Type
         </legend>
@@ -80,7 +98,8 @@ export default function SearchForm() {
                 value={type}
                 checked={npiType === type}
                 onChange={() => setNpiType(type)}
-                className="h-4 w-4 accent-blue-600"
+                disabled={isSearching}
+                className="h-4 w-4 accent-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
               />
               {type === "individual" ? "Individual" : "Organization"}
             </label>
