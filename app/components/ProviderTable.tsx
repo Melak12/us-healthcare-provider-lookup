@@ -61,7 +61,7 @@ export default function ProviderTable({
   providers,
   resultCount,
 }: ProviderTableProps) {
-  if (providers.length === 0) {
+  if (!providers || providers.length === 0) {
     return (
       <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center dark:border-gray-700 dark:bg-gray-900">
         <p className="text-sm text-gray-500 dark:text-gray-400">
