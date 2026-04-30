@@ -17,6 +17,7 @@ const MOCK_SEARCH_DELAY_MS = 1500;
 export default function SearchForm() {
   const router = useRouter();
   const mountedRef = useRef(true);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [npiType, setNpiType] = useState<NpiType>("individual");
   const [npiNumber, setNpiNumber] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -25,12 +26,12 @@ export default function SearchForm() {
   const [npiError, setNpiError] = useState("");
   const [isSearching, setIsSearching] = useState(false);
 
-  // Track whether the component is still mounted so we don't update state
-  // or navigate after an unmount during the async delay.
+  // Clear the mock-search timer and mark unmounted so async callbacks
+  // don't update state or navigate after the component is gone.
   useEffect(() => {
-    mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      if (timerRef.current !== null) clearTimeout(timerRef.current);
     };
   }, []);
 
@@ -59,7 +60,9 @@ export default function SearchForm() {
     try {
       // TODO: replace this delay with a real Server Action call
       //       e.g. await searchProviders({ npiType, npiNumber, firstName, providerName })
-      await new Promise((resolve) => setTimeout(resolve, MOCK_SEARCH_DELAY_MS));
+      await new Promise<void>((resolve) => {
+        timerRef.current = setTimeout(resolve, MOCK_SEARCH_DELAY_MS);
+      });
 
       if (mountedRef.current) {
         router.push("/search-result");
