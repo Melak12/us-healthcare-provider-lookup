@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 
 /** Serialised Lookup record (Dates converted to ISO strings for client props). */
@@ -124,6 +124,198 @@ function getResultSummary(resultJson: unknown, success: boolean): string {
   const name = buildName(results[0]);
   const total = data.result_count ?? results.length;
   return total > 1 ? `${name} +${total - 1} more` : name;
+}
+
+// ─── Summary cards ─────────────────────────────────────────────────────────
+
+interface SummaryCardsProps {
+  total: number;
+  success: number;
+  failed: number;
+}
+
+function SummaryCards({ total, success, failed }: SummaryCardsProps) {
+  const cards = [
+    {
+      label: "Total Searches",
+      value: total,
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          className="h-6 w-6"
+          aria-hidden="true"
+        >
+          <path
+            fillRule="evenodd"
+            d="M10.5 3.75a6.75 6.75 0 1 0 0 13.5 6.75 6.75 0 0 0 0-13.5ZM2.25 10.5a8.25 8.25 0 1 1 14.59 5.28l4.69 4.69a.75.75 0 1 1-1.06 1.06l-4.69-4.69A8.25 8.25 0 0 1 2.25 10.5Z"
+            clipRule="evenodd"
+          />
+        </svg>
+      ),
+      iconBg: "bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400",
+      valueCls: "text-blue-700 dark:text-blue-300",
+      border: "border-blue-100 dark:border-blue-900",
+    },
+    {
+      label: "Successful",
+      value: success,
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          className="h-6 w-6"
+          aria-hidden="true"
+        >
+          <path
+            fillRule="evenodd"
+            d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z"
+            clipRule="evenodd"
+          />
+        </svg>
+      ),
+      iconBg: "bg-green-50 text-green-600 dark:bg-green-950 dark:text-green-400",
+      valueCls: "text-green-700 dark:text-green-300",
+      border: "border-green-100 dark:border-green-900",
+    },
+    {
+      label: "Failed",
+      value: failed,
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          className="h-6 w-6"
+          aria-hidden="true"
+        >
+          <path
+            fillRule="evenodd"
+            d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z"
+            clipRule="evenodd"
+          />
+        </svg>
+      ),
+      iconBg: "bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400",
+      valueCls: "text-red-700 dark:text-red-300",
+      border: "border-red-100 dark:border-red-900",
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      {cards.map((card) => (
+        <div
+          key={card.label}
+          className={`flex items-center gap-4 rounded-2xl border ${card.border} bg-white px-5 py-4 shadow-sm dark:bg-gray-900`}
+        >
+          <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl ${card.iconBg}`}>
+            {card.icon}
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{card.label}</p>
+            <p className={`text-2xl font-bold ${card.valueCls}`}>{card.value}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Filter / sort toolbar ─────────────────────────────────────────────────
+
+type StatusFilter = "all" | "success" | "failed";
+type TypeFilter = "all" | "npi" | "name";
+type SortOrder = "newest" | "oldest";
+
+interface FilterBarProps {
+  statusFilter: StatusFilter;
+  typeFilter: TypeFilter;
+  sortOrder: SortOrder;
+  searchText: string;
+  onStatusChange: (v: StatusFilter) => void;
+  onTypeChange: (v: TypeFilter) => void;
+  onSortChange: (v: SortOrder) => void;
+  onSearchChange: (v: string) => void;
+}
+
+function FilterBar({
+  statusFilter,
+  typeFilter,
+  sortOrder,
+  searchText,
+  onStatusChange,
+  onTypeChange,
+  onSortChange,
+  onSearchChange,
+}: FilterBarProps) {
+  const selectCls =
+    "rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200";
+
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      {/* Free-text search */}
+      <div className="relative flex-1 min-w-[180px]">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+          aria-hidden="true"
+        >
+          <path
+            fillRule="evenodd"
+            d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z"
+            clipRule="evenodd"
+          />
+        </svg>
+        <input
+          type="search"
+          placeholder="Filter by query..."
+          value={searchText}
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="w-full rounded-xl border border-gray-300 bg-white py-1.5 pl-9 pr-3 text-sm text-gray-700 shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:placeholder:text-gray-500"
+        />
+      </div>
+
+      {/* Status filter */}
+      <select
+        value={statusFilter}
+        onChange={(e) => onStatusChange(e.target.value as StatusFilter)}
+        className={selectCls}
+        aria-label="Filter by status"
+      >
+        <option value="all">All statuses</option>
+        <option value="success">Success only</option>
+        <option value="failed">Failed only</option>
+      </select>
+
+      {/* Type filter */}
+      <select
+        value={typeFilter}
+        onChange={(e) => onTypeChange(e.target.value as TypeFilter)}
+        className={selectCls}
+        aria-label="Filter by query type"
+      >
+        <option value="all">All types</option>
+        <option value="npi">NPI</option>
+        <option value="name">Name</option>
+      </select>
+
+      {/* Sort order */}
+      <select
+        value={sortOrder}
+        onChange={(e) => onSortChange(e.target.value as SortOrder)}
+        className={selectCls}
+        aria-label="Sort order"
+      >
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
+      </select>
+    </div>
+  );
 }
 
 // ─── Detail modal ──────────────────────────────────────────────────────────
@@ -360,11 +552,50 @@ interface HistoryTableProps {
 
 /**
  * HistoryTable — Client Component.
- * Renders the list of past lookups and handles row-click detail modal.
+ * Renders summary stat cards, filter/sort controls, a lookup table,
+ * and handles row-click detail modal.
  */
 export default function HistoryTable({ lookups }: HistoryTableProps) {
   const [selectedLookup, setSelectedLookup] = useState<SerializedLookup | null>(null);
   const closeModal = useCallback(() => setSelectedLookup(null), []);
+
+  // ── Filter / sort state ──
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
+  const [searchText, setSearchText] = useState("");
+
+  // ── Derived stats (always from the full dataset) ──
+  const totalSuccess = useMemo(() => lookups.filter((l) => l.success).length, [lookups]);
+  const totalFailed = useMemo(() => lookups.filter((l) => !l.success).length, [lookups]);
+
+  // ── Filtered + sorted rows ──
+  const filteredLookups = useMemo(() => {
+    let rows = lookups;
+
+    if (statusFilter === "success") rows = rows.filter((l) => l.success);
+    else if (statusFilter === "failed") rows = rows.filter((l) => !l.success);
+
+    if (typeFilter !== "all") rows = rows.filter((l) => l.queryType === typeFilter);
+
+    if (searchText.trim()) {
+      const q = searchText.trim().toLowerCase();
+      rows = rows.filter(
+        (l) =>
+          l.query.toLowerCase().includes(q) ||
+          (l.npi ?? "").toLowerCase().includes(q)
+      );
+    }
+
+    if (sortOrder === "oldest") {
+      rows = [...rows].sort(
+        (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      );
+    }
+    // "newest" is already the default order from the server
+
+    return rows;
+  }, [lookups, statusFilter, typeFilter, sortOrder, searchText]);
 
   if (lookups.length === 0) {
     return (
@@ -404,83 +635,125 @@ export default function HistoryTable({ lookups }: HistoryTableProps) {
 
   return (
     <>
-      {/* Table */}
-      <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-800">
-            <tr>
-              {[
-                "Timestamp",
-                "Search Query",
-                "Type",
-                "NPI",
-                "Result Summary",
-                "Status",
-              ].map((heading) => (
-                <th
-                  key={heading}
-                  scope="col"
-                  className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
-                >
-                  {heading}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-            {lookups.map((lookup) => (
-              <tr
-                key={lookup.id}
-                onClick={() => setSelectedLookup(lookup)}
-                className="cursor-pointer transition-colors hover:bg-blue-50/40 dark:hover:bg-blue-950/20"
-                title="Click to view details"
-              >
-                {/* Timestamp */}
-                <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
-                  <span title={new Date(lookup.timestamp).toLocaleString()}>
-                    {formatRelativeTime(lookup.timestamp)}
-                  </span>
-                </td>
+      {/* ── Summary cards ── */}
+      <SummaryCards
+        total={lookups.length}
+        success={totalSuccess}
+        failed={totalFailed}
+      />
 
-                {/* Search Query */}
-                <td className="max-w-[180px] truncate px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {lookup.query}
-                </td>
+      {/* ── Filter / sort bar ── */}
+      <FilterBar
+        statusFilter={statusFilter}
+        typeFilter={typeFilter}
+        sortOrder={sortOrder}
+        searchText={searchText}
+        onStatusChange={setStatusFilter}
+        onTypeChange={setTypeFilter}
+        onSortChange={setSortOrder}
+        onSearchChange={setSearchText}
+      />
 
-                {/* Query Type */}
-                <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
-                  <span
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                      lookup.queryType === "npi"
-                        ? "bg-blue-50 text-blue-700 ring-1 ring-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:ring-blue-800"
-                        : "bg-purple-50 text-purple-700 ring-1 ring-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:ring-purple-800"
-                    }`}
+      {/* ── Results count when filtered ── */}
+      {(statusFilter !== "all" || typeFilter !== "all" || searchText.trim()) && (
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Showing{" "}
+          <span className="font-medium text-gray-700 dark:text-gray-300">
+            {filteredLookups.length}
+          </span>{" "}
+          of{" "}
+          <span className="font-medium text-gray-700 dark:text-gray-300">
+            {lookups.length}
+          </span>{" "}
+          lookups
+        </p>
+      )}
+
+      {/* ── Table or empty-filter state ── */}
+      {filteredLookups.length === 0 ? (
+        <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center dark:border-gray-700 dark:bg-gray-900">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            No lookups match the current filters.
+          </p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-800">
+              <tr>
+                {[
+                  "Timestamp",
+                  "Search Query",
+                  "Type",
+                  "NPI",
+                  "Result Summary",
+                  "Status",
+                ].map((heading) => (
+                  <th
+                    key={heading}
+                    scope="col"
+                    className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
                   >
-                    {lookup.queryType.toUpperCase()}
-                  </span>
-                </td>
-
-                {/* NPI */}
-                <td className="whitespace-nowrap px-4 py-3 font-mono text-sm text-blue-600 dark:text-blue-400">
-                  {lookup.npi ?? "—"}
-                </td>
-
-                {/* Result Summary */}
-                <td className="max-w-[220px] truncate px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
-                  {getResultSummary(lookup.resultJson, lookup.success)}
-                </td>
-
-                {/* Status */}
-                <td className="whitespace-nowrap px-4 py-3 text-sm">
-                  <StatusBadge success={lookup.success} />
-                </td>
+                    {heading}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+              {filteredLookups.map((lookup) => (
+                <tr
+                  key={lookup.id}
+                  onClick={() => setSelectedLookup(lookup)}
+                  className="cursor-pointer transition-colors hover:bg-blue-50/40 dark:hover:bg-blue-950/20"
+                  title="Click to view details"
+                >
+                  {/* Timestamp */}
+                  <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
+                    <span title={new Date(lookup.timestamp).toLocaleString()}>
+                      {formatRelativeTime(lookup.timestamp)}
+                    </span>
+                  </td>
 
-      {/* Detail modal */}
+                  {/* Search Query */}
+                  <td className="max-w-[180px] truncate px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {lookup.query}
+                  </td>
+
+                  {/* Query Type */}
+                  <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
+                    <span
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                        lookup.queryType === "npi"
+                          ? "bg-blue-50 text-blue-700 ring-1 ring-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:ring-blue-800"
+                          : "bg-purple-50 text-purple-700 ring-1 ring-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:ring-purple-800"
+                      }`}
+                    >
+                      {lookup.queryType.toUpperCase()}
+                    </span>
+                  </td>
+
+                  {/* NPI */}
+                  <td className="whitespace-nowrap px-4 py-3 font-mono text-sm text-blue-600 dark:text-blue-400">
+                    {lookup.npi ?? "—"}
+                  </td>
+
+                  {/* Result Summary */}
+                  <td className="max-w-[220px] truncate px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
+                    {getResultSummary(lookup.resultJson, lookup.success)}
+                  </td>
+
+                  {/* Status */}
+                  <td className="whitespace-nowrap px-4 py-3 text-sm">
+                    <StatusBadge success={lookup.success} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ── Detail modal ── */}
       {selectedLookup && (
         <DetailModal lookup={selectedLookup} onClose={closeModal} />
       )}
