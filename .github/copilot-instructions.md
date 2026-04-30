@@ -29,6 +29,7 @@ Build a small web application that looks up healthcare providers using the publi
 - Include basic validation for NPI (exactly 10 digits when searching by number).
 - Write clean, well-commented, and maintainable TypeScript code.
 - Use modern Next.js patterns (Server Components where appropriate).
+- Avoid taking screenshots to validate the UI. 
 
 ### Collaboration Workflow
 - I will review your code after each step.
