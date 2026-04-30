@@ -5,33 +5,29 @@ import { useRouter } from "next/navigation";
 
 type NpiType = "individual" | "organization";
 
-/** Artificial delay (ms) to mimic API latency until real integration is wired up. */
-const MOCK_SEARCH_DELAY_MS = 1500;
-
 /**
  * SearchForm — client component that renders the provider search fields.
- * On submit it shows a loading state with a progress bar, waits for
- * MOCK_SEARCH_DELAY_MS, then navigates to /search-result.
- * The mock delay will be replaced by a real Server Action call in a future step.
+ * On submit it validates the inputs and navigates to /search-result with
+ * the search parameters encoded in the URL query string.  The actual API
+ * call is performed server-side inside the SearchResultPage component.
  */
 export default function SearchForm() {
   const router = useRouter();
   const mountedRef = useRef(true);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [npiType, setNpiType] = useState<NpiType>("individual");
   const [npiNumber, setNpiNumber] = useState("");
   const [firstName, setFirstName] = useState("");
   // Stores either the individual's last name or the organization's name
   const [providerName, setProviderName] = useState("");
   const [npiError, setNpiError] = useState("");
+  const [generalError, setGeneralError] = useState("");
   const [isSearching, setIsSearching] = useState(false);
 
-  // Clear the mock-search timer and mark unmounted so async callbacks
-  // don't update state or navigate after the component is gone.
+  // Mark unmounted so async callbacks don't update state after the component
+  // has been removed from the tree (e.g. after navigation completes).
   useEffect(() => {
     return () => {
       mountedRef.current = false;
-      if (timerRef.current !== null) clearTimeout(timerRef.current);
     };
   }, []);
 
@@ -48,30 +44,35 @@ export default function SearchForm() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setGeneralError("");
 
-    // Basic validation before submitting
+    // Validate NPI number format
     if (npiNumber && npiNumber.length !== 10) {
       setNpiError("NPI number must be exactly 10 digits.");
       return;
     }
 
+    // Require at least one search criterion
+    if (!npiNumber && !firstName.trim() && !providerName.trim()) {
+      setGeneralError(
+        "Please enter an NPI number or at least one name field to search."
+      );
+      return;
+    }
+
     setIsSearching(true);
 
-    try {
-      // TODO: replace this delay with a real Server Action call
-      //       e.g. await searchProviders({ npiType, npiNumber, firstName, providerName })
-      await new Promise<void>((resolve) => {
-        timerRef.current = setTimeout(resolve, MOCK_SEARCH_DELAY_MS);
-      });
+    // Build search-result URL with query params so the server component can
+    // perform the actual NPPES API call and return real results.
+    const params = new URLSearchParams();
+    params.set("type", npiType);
+    if (npiNumber) params.set("npi", npiNumber);
+    if (firstName.trim()) params.set("first", firstName.trim());
+    if (providerName.trim()) params.set("last", providerName.trim());
 
-      if (mountedRef.current) {
-        router.push("/search-result");
-      }
-    } finally {
-      if (mountedRef.current) {
-        setIsSearching(false);
-      }
-    }
+    router.push(`/search-result?${params.toString()}`);
+    // isSearching stays true while Next.js loads the results page;
+    // the component will unmount naturally on successful navigation.
   }
 
   const isOrganization = npiType === "organization";
@@ -175,6 +176,13 @@ export default function SearchForm() {
           />
         </div>
       </div>
+
+      {/* ── General validation error ── */}
+      {generalError && (
+        <p className="mt-4 rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-600 dark:bg-red-950 dark:text-red-400">
+          {generalError}
+        </p>
+      )}
 
       {/* ── Progress bar (visible while searching) ── */}
       {isSearching && (
