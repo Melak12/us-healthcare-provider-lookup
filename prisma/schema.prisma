@@ -1,0 +1,55 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+//
+// The datasource URL and directUrl are configured in prisma.config.ts,
+// which reads from the DATABASE_URL and DIRECT_URL environment variables.
+// DATABASE_URL should point to the Neon pooled connection (PgBouncer).
+// DIRECT_URL should point to the Neon direct connection (used for migrations).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// --------------------------------------------------------------------
+// Lookup — records every provider search made through the application.
+// Stores the original query, the NPPES API response, and metadata
+// to power the lookup-history dashboard.
+// --------------------------------------------------------------------
+model Lookup {
+  /// Auto-generated primary key (CUID v2 for URL-safe, collision-resistant IDs)
+  id           String   @id @default(cuid())
+
+  /// The raw search term entered by the user (NPI number or provider name)
+  query        String
+
+  /// Distinguishes between NPI-number searches and name searches
+  /// Allowed values: "npi" | "name"
+  queryType    String
+
+  /// NPI number extracted from the result (null when none was returned)
+  npi          String?
+
+  /// Full JSON response from the NPPES API, stored verbatim for future reference
+  resultJson   Json?
+
+  /// Whether the API call returned at least one result
+  success      Boolean
+
+  /// Human-readable error message when success = false
+  errorMessage String?
+
+  /// The moment the user triggered this lookup (defaults to now)
+  timestamp    DateTime @default(now())
+
+  /// Row creation timestamp (managed by Prisma; same as timestamp for new records)
+  createdAt    DateTime @default(now())
+
+  @@index([queryType])
+  @@index([timestamp])
+  @@map("lookups")
+}
