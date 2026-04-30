@@ -18,8 +18,8 @@ export default async function HistoryPage() {
   const rawLookups = await getAllLookups();
 
   // Serialise Date fields to ISO strings before passing to the Client Component.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const lookups: SerializedLookup[] = rawLookups.map((l: any) => ({
+  type RawLookup = Awaited<ReturnType<typeof getAllLookups>>[number];
+  const lookups: SerializedLookup[] = rawLookups.map((l: RawLookup) => ({
     id: l.id,
     query: l.query,
     queryType: l.queryType,

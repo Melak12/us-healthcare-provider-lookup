@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 
 /** Serialised Lookup record (Dates converted to ISO strings for client props). */
 export interface SerializedLookup {
@@ -240,7 +241,7 @@ function DetailModal({ lookup, onClose }: DetailModalProps) {
               </h3>
               <div className="space-y-3">
                 {providers.slice(0, 5).map((provider, idx) => (
-                  <ProviderCard key={provider.number ?? idx} provider={provider} />
+                  <ProviderCard key={`${provider.number ?? ""}-${idx}`} provider={provider} />
                 ))}
                 {providers.length < (data?.result_count ?? 0) && (
                   <p className="text-xs text-gray-400 dark:text-gray-500">
@@ -391,12 +392,12 @@ export default function HistoryTable({ lookups }: HistoryTableProps) {
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Your past provider searches will appear here.
         </p>
-        <a
+        <Link
           href="/"
           className="mt-5 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         >
           Search providers
-        </a>
+        </Link>
       </div>
     );
   }
