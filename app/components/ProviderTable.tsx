@@ -3,14 +3,14 @@ import { NppesProvider, NppesAddress } from "@/app/types/nppes";
 /**
  * Returns the full display name for a provider.
  * For individuals: "LAST, FIRST [MIDDLE] [CREDENTIAL]"
- * For organizations: organization name from basic.name
+ * For organizations: organization name from basic.organization_name
  */
 function getProviderName(provider: NppesProvider): string {
   const { basic, enumeration_type } = provider;
 
   if (enumeration_type === "NPI-2") {
     // Organization
-    return basic.name ?? "—";
+    return basic.organization_name ?? "—";
   }
 
   // Individual

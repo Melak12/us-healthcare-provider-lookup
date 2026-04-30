@@ -24,7 +24,17 @@ export interface NppesBasic {
   first_name?: string;
   last_name?: string;
   middle_name?: string;
-  name?: string; // for organizations
+  // start: for organizations
+  organization_name?: string;
+  authorized_official_credential?: string;
+  authorized_official_first_name?: string;
+  authorized_official_last_name?: string;
+  authorized_official_middle_name?: string;
+  authorized_official_name_prefix?: string;
+  authorized_official_title_or_position?: string;
+  authorized_official_telephone_number?: string;
+  organizational_subpart?: string;
+  // end: for organizations
   name_prefix?: string;
   name_suffix?: string;
   last_updated: string;

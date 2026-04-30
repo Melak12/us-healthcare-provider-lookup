@@ -42,7 +42,7 @@ function formatRelativeTime(isoString: string): string {
 }
 
 interface ProviderBasic {
-  name?: string;
+  organization_name?: string;
   first_name?: string;
   last_name?: string;
   credential?: string;
@@ -103,7 +103,7 @@ function toApiResponse(resultJson: unknown): ParsedApiResponse | null {
 function buildName(provider: ParsedProvider): string {
   const basic = provider.basic ?? {};
   if (provider.enumeration_type === "NPI-2") {
-    return basic.name ?? "—";
+    return basic.organization_name ?? "—";
   }
   const parts: string[] = [];
   if (basic.last_name) parts.push(basic.last_name);
