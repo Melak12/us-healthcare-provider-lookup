@@ -1,21 +1,28 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 type NpiType = "individual" | "organization";
 
+/** Artificial delay (ms) to mimic API latency until real integration is wired up. */
+const MOCK_SEARCH_DELAY_MS = 1500;
+
 /**
  * SearchForm — client component that renders the provider search fields.
- * Uses local state for controlled inputs; actual search logic will be
- * wired to a Server Action in a later step.
+ * On submit it shows a loading state with a progress bar, waits for
+ * MOCK_SEARCH_DELAY_MS, then navigates to /search-result.
+ * The mock delay will be replaced by a real Server Action call in a future step.
  */
 export default function SearchForm() {
+  const router = useRouter();
   const [npiType, setNpiType] = useState<NpiType>("individual");
   const [npiNumber, setNpiNumber] = useState("");
   const [firstName, setFirstName] = useState("");
   // Stores either the individual's last name or the organization's name
   const [providerName, setProviderName] = useState("");
   const [npiError, setNpiError] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
 
   function handleNpiNumberChange(e: React.ChangeEvent<HTMLInputElement>) {
     // Allow only digits and cap at 10 characters
@@ -28,7 +35,7 @@ export default function SearchForm() {
     }
   }
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     // Basic validation before submitting
@@ -37,11 +44,19 @@ export default function SearchForm() {
       return;
     }
 
-    // TODO: call Server Action with { npiType, npiNumber, firstName, providerName }
-    console.log("Search submitted:", { npiType, npiNumber, firstName, providerName });
+    setIsSearching(true);
+
+    // TODO: replace this delay with a real Server Action call
+    //       e.g. await searchProviders({ npiType, npiNumber, firstName, providerName })
+    await new Promise((resolve) => setTimeout(resolve, MOCK_SEARCH_DELAY_MS));
+
+    router.push("/search-result");
   }
 
   const isOrganization = npiType === "organization";
+
+  const inputClass =
+    "rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500";
 
   return (
     <form
@@ -49,7 +64,7 @@ export default function SearchForm() {
       className="w-full rounded-2xl border border-gray-200 bg-white p-8 shadow-sm dark:border-gray-700 dark:bg-gray-900"
     >
       {/* ── NPI Type selector ── */}
-      <fieldset className="mb-6">
+      <fieldset className="mb-6" disabled={isSearching}>
         <legend className="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
           Provider Type
         </legend>
@@ -90,7 +105,8 @@ export default function SearchForm() {
             placeholder="10-digit NPI number"
             value={npiNumber}
             onChange={handleNpiNumberChange}
-            className="rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
+            disabled={isSearching}
+            className={inputClass}
           />
           {npiError && (
             <p className="text-xs text-red-500">{npiError}</p>
@@ -112,7 +128,8 @@ export default function SearchForm() {
               placeholder="e.g. John"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
-              className="rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
+              disabled={isSearching}
+              className={inputClass}
             />
           </div>
         )}
@@ -131,18 +148,55 @@ export default function SearchForm() {
             placeholder={isOrganization ? "e.g. General Hospital" : "e.g. Doe"}
             value={providerName}
             onChange={(e) => setProviderName(e.target.value)}
-            className="rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
+            disabled={isSearching}
+            className={inputClass}
           />
         </div>
       </div>
+
+      {/* ── Progress bar (visible while searching) ── */}
+      {isSearching && (
+        <div className="mt-6 overflow-hidden rounded-full bg-blue-100 dark:bg-blue-950">
+          <div className="h-1.5 animate-progress rounded-full bg-blue-600" />
+        </div>
+      )}
 
       {/* ── Search Button ── */}
       <div className="mt-6">
         <button
           type="submit"
-          className="w-full rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 active:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+          disabled={isSearching}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 active:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
         >
-          Search Provider
+          {isSearching ? (
+            <>
+              {/* Spinner icon */}
+              <svg
+                className="h-4 w-4 animate-spin"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                />
+              </svg>
+              Searching…
+            </>
+          ) : (
+            "Search Provider"
+          )}
         </button>
       </div>
     </form>
