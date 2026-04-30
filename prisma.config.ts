@@ -9,8 +9,16 @@
 // Environment variables:
 //   DATABASE_URL  — Neon pooled connection, used by the app at runtime.
 //   DIRECT_URL    — Neon direct connection, used by Prisma CLI for migrations.
-import "dotenv/config";
+import { config as loadEnv } from 'dotenv';
 import { defineConfig } from "prisma/config";
+
+loadEnv();
+
+const databaseUrl = process.env.DATABASE_URL
+
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL environment variable is not set');
+}
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
@@ -18,8 +26,6 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    // Use the direct (non-pooled) connection for CLI operations so that
-    // Prisma Migrate can execute DDL without PgBouncer interference.
-    url: process.env["DIRECT_URL"],
+    url: databaseUrl
   },
 });
